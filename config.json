@@ -20,5 +20,11 @@
     "replication_factor": 1,
     "on_disk_payload": true,
     "quantization_enabled": true
+  },
+    "embeddings": {
+    "model_name": "ai-sage\\Giga-Embeddings-instruct-3B-0826",
+      "model_path": "D:\\models\\giga\\hub\\models--ai-sage--Giga-Embeddings-instruct-3B-0826\\snapshots\\b71168088212f0a13688514e4fc288a86106c4e4",
+    "device": "cuda",
+    "batch_size": 4
   }
 }

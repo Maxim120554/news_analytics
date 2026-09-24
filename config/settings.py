@@ -32,11 +32,18 @@ class CollectionConfig(BaseModel):
     on_disk_payload: bool = True
     quantization_enabled: bool = False
 
+class EmbeddingsConfig(BaseModel):
+    model_name: str
+    model_path: str
+    device: str = "cuda"
+    batch_size: int = 4
+
 
 class Settings(BaseModel):
     project: ProjectConfig
     qdrant: QdrantConfig
     collection: CollectionConfig
+    embeddings: EmbeddingsConfig
 
     @classmethod
     def load(cls) -> "Settings":
