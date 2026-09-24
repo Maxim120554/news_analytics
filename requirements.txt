@@ -1,0 +1,17 @@
+# Core
+qdrant-client>=1.12.0
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+python-dotenv>=1.0.1
+
+# Logging
+loguru>=0.7.2
+
+# Development
+ipython>=8.0.0
+
+# Embeddings & Hugging Face
+sentence-transformers>=3.0.0
+torch>=2.4.0
+transformers>=4.44.0
+accelerate>=0.33.0  # Для оптимизации загрузки на GPU
