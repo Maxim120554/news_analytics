@@ -65,26 +65,33 @@ def run_clustering_pipeline(limit: int = 1000) -> None:
             clusterer = HDBSCANClusterer()
             cluster_labels = clusterer.fit_predict(vectors_pca)
 
-            # 5. Этап UMAP (Снижение до 3D только для визуализации)
-            logger.info("Снижение размерности до 3D с помощью UMAP для визуализации...")
-            reducer_3d = umap.UMAP(
-                n_components=3,
-                metric='cosine',
-                random_state=42,
-                n_jobs=-1
-            )
+            # 5. Этап UMAP (Снижение до 2D и 3D для визуализации)
+            logger.info("Снижение размерности до 2D и 3D с помощью UMAP для визуализации...")
+            import umap
+
+            # 2D UMAP (для плоской визуализации)
+            reducer_2d = umap.UMAP(n_components=2, metric='cosine', random_state=42)
+            vectors_2d = reducer_2d.fit_transform(vectors_pca)
+
+            # 3D UMAP (для объемной визуализации)
+            reducer_3d = umap.UMAP(n_components=3, metric='cosine', random_state=42)
             vectors_3d = reducer_3d.fit_transform(vectors_pca)
-            logger.success("✅ 3D-координаты рассчитаны.")
+
+            logger.success("✅ 2D и 3D координаты рассчитаны.")
 
             # 6. Обновление данных в Qdrant
-            logger.info("Обновление payload в Qdrant (cluster_id + 3D координаты)...")
+            logger.info("Обновление payload в Qdrant (cluster_id + 2D/3D координаты)...")
             points_to_update = []
 
             for i, rec in enumerate(records):
                 new_payload = rec.payload.copy()
                 new_payload["cluster_id"] = int(cluster_labels[i])
 
-                # Добавляем 3D координаты для визуализации
+                # Добавляем 2D координаты
+                new_payload["viz_2d_x"] = float(vectors_2d[i][0])
+                new_payload["viz_2d_y"] = float(vectors_2d[i][1])
+
+                # Добавляем 3D координаты
                 new_payload["viz_x"] = float(vectors_3d[i][0])
                 new_payload["viz_y"] = float(vectors_3d[i][1])
                 new_payload["viz_z"] = float(vectors_3d[i][2])
@@ -92,16 +99,13 @@ def run_clustering_pipeline(limit: int = 1000) -> None:
                 points_to_update.append(
                     qmodels.PointStruct(
                         id=rec.id,
-                        vector=rec.vector,  # Обязательно для Pydantic
+                        vector=rec.vector,
                         payload=new_payload
                     )
                 )
 
-            # Обновляем батчем
             db.upsert_points(points_to_update)
-
             logger.success("🎉 Пайплайн кластеризации успешно завершен!")
-            logger.info("Теперь вы можете фильтровать новости в Qdrant по полю 'cluster_id' или рисовать 3D.")
 
     except Exception as e:
         logger.exception(f"❌ Критическая ошибка в пайплайне: {e}")
