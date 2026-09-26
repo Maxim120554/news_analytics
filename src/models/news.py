@@ -1,91 +1,68 @@
-"""Модели данных для новостей."""
-import uuid
-from datetime import datetime
-from enum import Enum
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Optional
-from pydantic import BaseModel, Field
+import hashlib
+from qdrant_client.http import models as qmodels  # Добавили для типизации
 
 
-# ─── ENUMS (Перечисления) ─────────────────────────────────
+@dataclass
+class NewsItem:
+    text: str  # Полный текст / сниппет (обязательный)
+    source: str  # Источник (например, "Habr")
+    url: str  # Ссылка на оригинал
+    title: Optional[str] = None  # Заголовок (может быть None)
+    published_at: Optional[datetime] = None  # Время публикации на сайте
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    vector: Optional[list[float]] = None  # Эмбеддинг
 
-class NewsSource(str, Enum):
-    RBC = "rbc"
-    VEDOMOSTI = "vedomosti"
-    TASS = "tass"
-    LENTA = "lenta"
-    RIA = "ria"
-    OTHER = "other"
+    # Эти поля вычисляются автоматически
+    id: str = field(init=False)
+    has_vector: bool = field(init=False)
 
-
-class NewsCategory(str, Enum):
-    ECONOMY = "economy"
-    TECHNOLOGY = "technology"
-    SPORT = "sport"
-    SOCIETY = "society"
-    OTHER = "other"
-
-
-# ─── DOMAIN MODEL (Бизнес-логика) ─────────────────────────
-
-class NewsArticle(BaseModel):
-    """Внутреннее представление новости в приложении."""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    title: str
-    text: str
-    source: NewsSource
-    category: NewsCategory
-    published_at: datetime
-    source_url: Optional[str] = None
-    author: Optional[str] = None
-    language: str = "ru"
-    tags: list[str] = Field(default_factory=list)
-    is_verified: bool = False
-
-    @property
-    def full_text(self) -> str:
-        """Объединяет заголовок и текст для лучшего эмбеддинга."""
-        return f"{self.title}. {self.text}"
-
-
-# ─── PAYLOAD MODEL (Для сохранения в Qdrant) ──────────────
-
-class NewsPayload(BaseModel):
-    """Сериализованная версия новости для хранения в Qdrant."""
-    article_id: str
-    title: str
-    text: str
-    source: str
-    source_url: Optional[str] = None
-    author: Optional[str] = None
-    published_at: str  # В Qdrant храним как строку (ISO format)
-    category: str
-    language: str
-    tags: list[str]
-    is_verified: bool
-    cluster_id: int = Field(default=-1, description="ID кластера (-1 = шум)")
-    topic_label: Optional[str] = Field(default=None, description="Название темы от LLM")
-    is_embedded: bool = Field(default=False, description="Были ли уже посчитаны векторы")
+    def __post_init__(self):
+        # Генерируем ID на основе URL (будет использоваться как ID точки в Qdrant)
+        self.id = hashlib.sha256(self.url.encode("utf-8")).hexdigest()
+        # Автоматически вычисляем флаг наличия вектора
+        self.has_vector = self.vector is not None and len(self.vector) > 0
 
     @classmethod
-    def from_article(cls, article: NewsArticle, cluster_id: int = -1, topic_label: str | None = None) -> "NewsPayload":
-        """Создаёт payload из объекта NewsArticle."""
+    def from_qdrant_record(cls, record: qmodels.Record) -> "NewsItem":
+        """Создает NewsItem из записи Qdrant."""
+        payload = record.payload or {}
+
+        # Вспомогательная функция для безопасного парсинга дат из ISO-строк
+        def parse_dt(val: Optional[str]) -> Optional[datetime]:
+            if not val:
+                return None
+            try:
+                # replace("Z", "+00:00") нужно для совместимости с разными форматами ISO
+                return datetime.fromisoformat(val.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                return None
+
         return cls(
-            article_id=article.id,
-            title=article.title,
-            text=article.full_text,  # Сохраняем объединенный текст для эмбеддинга
-            source=article.source.value,
-            source_url=article.source_url,
-            author=article.author,
-            published_at=article.published_at.isoformat(),
-            category=article.category.value,
-            language=article.language,
-            tags=article.tags,
-            is_verified=article.is_verified,
-            cluster_id=cluster_id,
-            topic_label=topic_label,
-            is_embedded=True  # Если мы вызываем это перед сохранением с вектором, ставим True
+            text=payload.get("text", ""),
+            source=payload.get("source", "Unknown"),
+            url=payload.get("url", ""),
+            title=payload.get("title"),
+            published_at=parse_dt(payload.get("published_at")),
+            created_at=parse_dt(payload.get("created_at")) or datetime.now(timezone.utc),
+            vector=record.vector if hasattr(record, 'vector') else None,
+            # id и has_vector вычислятся автоматически в __post_init__
         )
 
-    def to_qdrant_dict(self) -> dict:
-        """Сериализация в dict для передачи в Qdrant payload."""
-        return self.model_dump(exclude_none=True)
+    def to_qdrant_point(self) -> qmodels.PointStruct:
+        """Подготовка данных для PointStruct в Qdrant."""
+        return qmodels.PointStruct(
+            id=self.id,  # Используем хэш URL как нативный ID точки в Qdrant
+            vector=self.vector,
+            payload={
+                "title": self.title,
+                "text": self.text,
+                "source": self.source,
+                "url": self.url,
+                "published_at": self.published_at.isoformat() if self.published_at else None,
+                "created_at": self.created_at.isoformat(),
+                "has_vector": self.has_vector,
+            }
+        )

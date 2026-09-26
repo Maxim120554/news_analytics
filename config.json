@@ -5,15 +5,15 @@
     "log_dir": "./logs"
   },
   "qdrant": {
-    "host": "127.0.0.1",
+    "host": "192.168.0.100",
     "http_port": 6333,
     "grpc_port": 6334,
-    "api_key": "",
+    "api_key": "b5f6fg4b5",
     "prefer_grpc": false,
     "timeout": 30
   },
   "collection": {
-    "name": "news_embeddings",
+    "name": "news_mvp_test",
     "vector_size": 2048,
     "vector_distance": "Cosine",
     "shard_number": 1,
@@ -26,5 +26,11 @@
       "model_path": "D:\\models\\giga\\hub\\models--ai-sage--Giga-Embeddings-instruct-3B-0826\\snapshots\\b71168088212f0a13688514e4fc288a86106c4e4",
     "device": "cuda",
     "batch_size": 4
+  },
+    "clustering": {
+    "pca_dim": 128,
+    "unet_dim": 32,
+    "hdbscan_min_cluster_size": 10,
+    "hdbscan_min_samples": 5
   }
 }

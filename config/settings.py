@@ -38,12 +38,18 @@ class EmbeddingsConfig(BaseModel):
     device: str = "cuda"
     batch_size: int = 4
 
+class ClusteringConfig(BaseModel):
+    pca_dim: int = 128
+    unet_dim: int = 32
+    hdbscan_min_cluster_size: int = 15
+    hdbscan_min_samples: int = 5
 
 class Settings(BaseModel):
     project: ProjectConfig
     qdrant: QdrantConfig
     collection: CollectionConfig
     embeddings: EmbeddingsConfig
+    clustering: ClusteringConfig
 
     @classmethod
     def load(cls) -> "Settings":

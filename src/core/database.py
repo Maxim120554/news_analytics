@@ -11,7 +11,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 
 from config.settings import settings
-
+from src.models.news import NewsItem
 
 # ─── Пользовательские исключения ──────────────────────────
 
@@ -155,6 +155,75 @@ class QdrantRepository:
             logger.error(f"❌ Ошибка вставки данных: {e}")
             raise DatabaseOperationError(f"Ошибка при вставке данных: {e}") from e
 
+        # ─── Чтение данных (Read) ─────────────────────────────
+
+    def get_news_by_ids(self, news_ids: list[str], with_vectors: bool = False) -> list[NewsItem]:
+        """
+        Получает список новостей по их ID (хэшам URL).
+
+        Args:
+            news_ids: Список ID новостей (строк).
+            with_vectors: Загружать ли сами векторы (включать только если нужно для дообучения/сравнения).
+
+        Returns:
+            Список объектов NewsItem (найденные).
+        """
+        if not news_ids:
+            return []
+
+        try:
+            records = self.client.retrieve(
+                collection_name=self._collection_name,
+                ids=news_ids,
+                with_payload=True,
+                with_vectors=with_vectors
+            )
+            # Фильтруем None (на случай, если какой-то ID не найден) и преобразуем
+            news_items = [NewsItem.from_qdrant_record(rec) for rec in records if rec is not None]
+            logger.info(f"📥 Получено {len(news_items)} новостей по ID из {len(news_ids)} запрошенных")
+            return news_items
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения новостей по ID: {e}")
+            return []
+
+    def search_similar_news(
+            self,
+            query_vector: list[float],
+            limit: int = 5,
+            score_threshold: float = 0.7,
+            query_filter: Optional[qmodels.Filter] = None,
+            with_vectors: bool = False
+    ) -> list[tuple[NewsItem, float]]:
+        """
+        Ищет семантически похожие новости.
+
+        Returns:
+            Список кортежей (NewsItem, score), отсортированный по убыванию схожести.
+            Возвращать кортеж со score очень полезно, чтобы знать, насколько результат релевантен.
+        """
+        try:
+            results = self.client.search(
+                collection_name=self._collection_name,
+                query_vector=query_vector,
+                query_filter=query_filter,
+                limit=limit,
+                score_threshold=score_threshold,
+                with_payload=True,
+                with_vectors=with_vectors,
+            )
+
+            news_with_scores = [
+                (NewsItem.from_qdrant_record(hit), hit.score)
+                for hit in results
+            ]
+
+            logger.info(f"🔍 Найдено {len(news_with_scores)} похожих новостей (score >= {score_threshold})")
+            return news_with_scores
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка семантического поиска: {e}")
+            return []
 
     # ─── Управление коллекциями ─────────────────────────
 

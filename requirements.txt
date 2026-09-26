@@ -15,3 +15,10 @@ sentence-transformers>=3.0.0
 torch>=2.4.0
 transformers>=4.44.0
 accelerate>=0.33.0  # Для оптимизации загрузки на GPU
+
+numpy>=1.26.0
+scikit-learn>=1.5.0
+
+
+umap-learn>=0.5.6       # <-- ДОБАВИТЬ
+plotly>=5.22.0

@@ -1,6 +1,6 @@
 # src/main.py
-import src.core.logger  # Этот импорт запустит настройку логгера (setup_logger)
-from loguru import logger  # Импортируем сам объект logger напрямую из loguru
+import src.core.logger
+from loguru import logger
 from src.core.database import QdrantRepository, DatabaseConnectionError
 
 
@@ -25,8 +25,7 @@ def main() -> int:
             collections = db.list_collections()
 
             if not collections:
-                logger.warning("В базе пока нет коллекций. Это нормально для первого запуска.")
-                logger.info("Следующий шаг: создать коллекцию для новостных эмбеддингов.")
+                logger.warning("В базе пока нет коллекций.")
             else:
                 logger.success(f"Активные коллекции: {collections}")
 
@@ -34,7 +33,7 @@ def main() -> int:
             if db.collection_exists(target_collection):
                 logger.info(f"Коллекция '{target_collection}' уже существует")
             else:
-                logger.info(f"Коллекция '{target_collection}' будет создана на следующем этапе")
+                logger.info(f"Коллекции '{target_collection}' не существует")
 
         logger.success("=" * 60)
         logger.success("✅ Все проверки пройдены успешно")
