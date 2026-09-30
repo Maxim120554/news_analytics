@@ -55,6 +55,7 @@ class QdrantRepository:
                 prefer_grpc=settings.qdrant.prefer_grpc,
                 api_key=settings.qdrant.api_key or None,
                 timeout=settings.qdrant.timeout,
+                check_compatibility=False
             )
             self._client.get_collections()
 

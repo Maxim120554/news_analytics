@@ -1,24 +1,27 @@
 """Централизованная конфигурация проекта через JSON."""
 import json
+import os
 from pathlib import Path
 from pydantic import BaseModel
-
+from dotenv import load_dotenv
+load_dotenv()
 # Абсолютный путь к файлу конфигурации
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = BASE_DIR / "config.json"
-
+load_dotenv()
 
 class ProjectConfig(BaseModel):
     name: str = "news_analytics"
     log_level: str = "INFO"
-    log_dir: str = BASE_DIR / "logs"
+    log_dir: Path = BASE_DIR / "logs"
+    results_dir: Path = BASE_DIR / "results"
 
 
 class QdrantConfig(BaseModel):
     host: str = "127.0.0.1"
     http_port: int = 6333
     grpc_port: int = 6334
-    api_key: str = ""
+    api_key: str = os.getenv("QDRANT_API_KEY")
     prefer_grpc: bool = False
     timeout: int = 30
 
@@ -39,9 +42,9 @@ class EmbeddingsConfig(BaseModel):
     batch_size: int = 4
 
 class ClusteringConfig(BaseModel):
-    pca_dim: int = 128
-    unet_dim: int = 32
-    hdbscan_min_cluster_size: int = 15
+    umap_n_neighbors: int = 15
+    umap_min_dist: float = 0.0
+    hdbscan_min_cluster_size: int = 10
     hdbscan_min_samples: int = 5
 
 class Settings(BaseModel):

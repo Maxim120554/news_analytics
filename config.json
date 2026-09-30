@@ -1,19 +1,17 @@
 {
   "project": {
     "name": "news_analytics",
-    "log_level": "INFO",
-    "log_dir": "./logs"
+    "log_level": "INFO"
   },
   "qdrant": {
     "host": "192.168.0.100",
     "http_port": 6333,
     "grpc_port": 6334,
-    "api_key": "b5f6fg4b5",
     "prefer_grpc": false,
     "timeout": 30
   },
   "collection": {
-    "name": "news_mvp_test",
+    "name": "test1",
     "vector_size": 2048,
     "vector_distance": "Cosine",
     "shard_number": 1,
@@ -27,10 +25,10 @@
     "device": "cuda",
     "batch_size": 4
   },
-    "clustering": {
-    "pca_dim": 128,
-    "unet_dim": 32,
-    "hdbscan_min_cluster_size": 10,
-    "hdbscan_min_samples": 5
+      "clustering": {
+    "umap_n_neighbors": 15,
+    "umap_min_dist": 0.0,
+    "hdbscan_min_cluster_size": 20,
+    "hdbscan_min_samples": 10
   }
 }
